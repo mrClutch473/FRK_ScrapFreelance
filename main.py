@@ -45,13 +45,11 @@ async def main():
     coalesce=True
 )
 
-    # Анализ каждые 30 минут, но стартует через 5 минут после запуска
-    # чтобы парсер успел записать заказы в БД
     scheduler.add_job(
         job_analyze,
         "interval",
         minutes=30,
-        misfire_grace_time=300,  # допускаем опоздание до 5 минут
+        misfire_grace_time=300, 
         coalesce=True,
         start_date=datetime.now() + timedelta(minutes=5)
     )
@@ -62,11 +60,9 @@ async def main():
     scheduler.start()
     print("✅ Scheduler запущен")
 
-    # Запускаем сразу при старте не дожидаясь 30 минут
     await job_parse()
     await job_analyze()
 
-    # Держим процесс живым
     while True:
         await asyncio.sleep(60)
 
