@@ -39,11 +39,11 @@ class ViewState(StatesGroup):
     browsing = State()
 
 class SearchState(StatesGroup):
-    waiting_keyword = State()       # ждём ключевое слово
-    filter_category = State()       # выбор категории
-    filter_tag = State()            # выбор тега
-    filter_budget = State()         # ввод бюджета
-    browsing_results = State()      # просмотр результатов
+    waiting_keyword = State()      
+    filter_category = State()      
+    filter_tag = State()           
+    filter_budget = State()         
+    browsing_results = State()      
 
 # ─────────────────────────────────────────────
 # Вспомогательная функция: получить заказ по ID
@@ -98,7 +98,7 @@ def generate_response_text(project: dict) -> dict:
     )
 
     response = client.chat.completions.create(
-        model="anthropic/claude-sonnet-4",   # Claude Sonnet через OpenRouter
+        model="anthropic/claude-sonnet-4",  
         messages=[
             {"role": "system", "content": RESPONSE_PROMPT},
             {"role": "user",   "content": user_message}
@@ -107,7 +107,6 @@ def generate_response_text(project: dict) -> dict:
 
     raw = response.choices[0].message.content.strip()
 
-    # Чистим markdown-обёртку если модель всё же добавила
     if raw.startswith("```"):
         raw = raw.split("```")[1]
         if raw.startswith("json"):
@@ -117,13 +116,11 @@ def generate_response_text(project: dict) -> dict:
     try:
         return json.loads(raw)
     except json.JSONDecodeError:
-        # Пробуем вытащить JSON между { и }
         try:
             start = raw.index("{")
             end = raw.rindex("}") + 1
             return json.loads(raw[start:end])
         except Exception:
-            # Если совсем не распарсилось — возвращаем сырой текст как отклик
             return {
                 "title": project["title"],
                 "response": raw,
@@ -279,7 +276,7 @@ async def cb_open_category(callback: CallbackQuery, state: FSMContext):
     await state.set_state(ViewState.browsing)
     await state.update_data(category=category, index=0, projects=projects)
 
-    project_id = projects[0][0]  # id — первое поле в row
+    project_id = projects[0][0]
     text = format_project(projects[0], 0, len(projects))
     await callback.message.edit_text(
         text,
@@ -304,7 +301,7 @@ async def cb_navigate(callback: CallbackQuery, state: FSMContext):
     index = max(0, min(index, len(projects) - 1))
     await state.update_data(index=index)
 
-    project_id = projects[index][0]  # id — первое поле в row
+    project_id = projects[index][0]
     text = format_project(projects[index], index, len(projects))
     try:
         await callback.message.edit_text(
@@ -325,17 +322,14 @@ async def cb_navigate(callback: CallbackQuery, state: FSMContext):
 async def cb_gen_resp(callback: CallbackQuery):
     project_id = int(callback.data.split("gen_resp_")[1])
 
-    # Показываем индикатор загрузки
     await callback.answer("⏳ Генерирую отклик, подожди...")
     await callback.message.reply("⏳ <b>Генерирую отклик...</b> Обычно занимает 5–15 секунд.", parse_mode="HTML")
 
-    # Получаем данные заказа из БД
     project = get_project_by_id(project_id)
     if not project:
         await callback.message.reply("❌ Заказ не найден в базе.")
         return
 
-    # Генерируем отклик в отдельном потоке (OpenAI клиент синхронный)
     loop = asyncio.get_event_loop()
     try:
         result = await loop.run_in_executor(None, generate_response_text, project)
@@ -630,7 +624,6 @@ async def cb_filter_category(callback: CallbackQuery, state: FSMContext):
     await state.update_data(filter_category=category)
     await state.set_state(SearchState.filter_tag)
 
-    # Показываем топ тегов как кнопки
     top_tags = get_top_tags(8)
     tag_buttons = []
     row = []
